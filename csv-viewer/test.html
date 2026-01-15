@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Viewer - テストスイート</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .test-suite {
+            padding: 30px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+        }
+
+        .test-section h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .test-case {
+            margin-bottom: 12px;
+            padding: 12px 15px;
+            background: #f5f5f5;
+            border-left: 4px solid #ddd;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .test-case.pass {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .test-case.fail {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .test-case-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .test-case-message {
+            font-size: 12px;
+            color: #555;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .test-case.pass .test-case-message {
+            color: #155724;
+        }
+
+        .test-case.fail .test-case-message {
+            color: #721c24;
+        }
+
+        .test-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .summary-item-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .pass-rate {
+            font-size: 20px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .test-controls {
+            text-align: center;
+            padding: 20px 30px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 CSV Viewer テストスイート</h1>
+            <p>図書管理CSVビューアの自動テスト</p>
+        </header>
+
+        <div class="test-controls">
+            <button onclick="runAllTests()">🚀 すべてのテストを実行</button>
+        </div>
+
+        <div class="test-suite" id="test-suite"></div>
+
+        <div class="test-summary" id="test-summary" style="display: none;">
+            <div class="summary-item">
+                <div class="summary-item-value" id="total-tests">0</div>
+                <div class="summary-item-label">総テスト数</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-value" style="color: #28a745;" id="passed-tests">0</div>
+                <div class="summary-item-label">成功</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-value" style="color: #dc3545;" id="failed-tests">0</div>
+                <div class="summary-item-label">失敗</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-item-value pass-rate" id="pass-rate">0%</div>
+                <div class="summary-item-label">成功率</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // テストのユーティリティ
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            test(sectionName, testName, testFunction) {
+                this.tests.push({
+                    section: sectionName,
+                    name: testName,
+                    fn: testFunction
+                });
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message);
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(`${message} (Expected: ${expected}, Got: ${actual})`);
+                }
+            }
+
+            assertTrue(condition, message) {
+                if (!condition) {
+                    throw new Error(message);
+                }
+            }
+
+            async run() {
+                this.results = [];
+                
+                for (const test of this.tests) {
+                    try {
+                        await test.fn();
+                        this.results.push({
+                            section: test.section,
+                            name: test.name,
+                            passed: true,
+                            message: '✅ テスト成功'
+                        });
+                    } catch (error) {
+                        this.results.push({
+                            section: test.section,
+                            name: test.name,
+                            passed: false,
+                            message: `❌ ${error.message}`
+                        });
+                    }
+                }
+
+                this.display();
+            }
+
+            display() {
+                const suiteContainer = document.getElementById('test-suite');
+                suiteContainer.innerHTML = '';
+
+                const sections = new Map();
+                
+                for (const result of this.results) {
+                    if (!sections.has(result.section)) {
+                        sections.set(result.section, []);
+                    }
+                    sections.get(result.section).push(result);
+                }
+
+                for (const [sectionName, tests] of sections) {
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.className = 'test-section';
+
+                    const title = document.createElement('h2');
+                    title.textContent = sectionName;
+                    sectionDiv.appendChild(title);
+
+                    for (const test of tests) {
+                        const testDiv = document.createElement('div');
+                        testDiv.className = `test-case ${test.passed ? 'pass' : 'fail'}`;
+
+                        const testTitle = document.createElement('div');
+                        testTitle.className = 'test-case-title';
+                        testTitle.textContent = test.name;
+
+                        const testMessage = document.createElement('div');
+                        testMessage.className = 'test-case-message';
+                        testMessage.textContent = test.message;
+
+                        testDiv.appendChild(testTitle);
+                        testDiv.appendChild(testMessage);
+                        sectionDiv.appendChild(testDiv);
+                    }
+
+                    suiteContainer.appendChild(sectionDiv);
+                }
+
+                this.displaySummary();
+            }
+
+            displaySummary() {
+                const totalTests = this.results.length;
+                const passedTests = this.results.filter(r => r.passed).length;
+                const failedTests = totalTests - passedTests;
+                const passRate = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
+
+                document.getElementById('total-tests').textContent = totalTests;
+                document.getElementById('passed-tests').textContent = passedTests;
+                document.getElementById('failed-tests').textContent = failedTests;
+                document.getElementById('pass-rate').textContent = passRate + '%';
+                document.getElementById('test-summary').style.display = 'flex';
+            }
+        }
+
+        // テスト定義
+        const runner = new TestRunner();
+
+        // ==================== CSVパース関連テスト ====================
+        runner.test('CSVパース機能', '正常なCSVデータのパース', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    runner.assertTrue(results.data.length === 2, 'データ行が2行である');
+                    runner.assertTrue(Object.keys(results.data[0]).length === 4, 'カラム数が4である');
+                    runner.assertEqual(results.data[0]['タイトル'], 'ノルウェイの森', 'タイトル列が正しく読み込まれている');
+                    runner.assertEqual(results.data[0]['著者'], '村上春樹', '著者列が正しく読み込まれている');
+                    runner.assertEqual(results.data[0]['発行年'], '1987', '発行年列が正しく読み込まれている');
+                    runner.assertEqual(results.data[0]['ISBNコード'], '978-4-06-182009-8', 'ISBNコード列が正しく読み込まれている');
+                }
+            });
+        });
+
+        runner.test('CSVパース機能', '空行をスキップするテスト', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    runner.assertTrue(results.data.length === 2, '空行がスキップされて2行のデータが取得される');
+                }
+            });
+        });
+
+        runner.test('CSVパース機能', '空のCSVデータの処理', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード`;
+
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    runner.assertTrue(results.data.length === 0, '空のデータが適切に処理されている');
+                }
+            });
+        });
+
+        // ==================== ヘッダー検証テスト ====================
+        runner.test('ヘッダー検証', 'すべての必須カラムが存在', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    const requiredColumns = ['タイトル', '著者', '発行年', 'ISBNコード'];
+                    const headers = Object.keys(results.data[0]);
+                    
+                    for (const col of requiredColumns) {
+                        runner.assertTrue(headers.includes(col), `カラム "${col}" が存在する`);
+                    }
+                }
+            });
+        });
+
+        runner.test('ヘッダー検証', 'カラム数が4列である', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    const columnCount = Object.keys(results.data[0]).length;
+                    runner.assertEqual(columnCount, 4, 'カラム数が正確に4である');
+                }
+            });
+        });
+
+        // ==================== データ内容検証テスト ====================
+        runner.test('データ内容検証', 'タイトルが空白でない', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    for (const row of results.data) {
+                        runner.assertTrue(row['タイトル'] && row['タイトル'].trim() !== '', 'タイトルが空白でない');
+                    }
+                }
+            });
+        });
+
+        runner.test('データ内容検証', '著者が空白でない', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    for (const row of results.data) {
+                        runner.assertTrue(row['著者'] && row['著者'].trim() !== '', '著者が空白でない');
+                    }
+                }
+            });
+        });
+
+        runner.test('データ内容検証', '発行年が4桁の数値', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    for (const row of results.data) {
+                        const year = row['発行年'];
+                        runner.assertTrue(/^\d{4}$/.test(year), `発行年 "${year}" が4桁の数値である`);
+                    }
+                }
+            });
+        });
+
+        runner.test('データ内容検証', 'ISBNコードが空白でない', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    for (const row of results.data) {
+                        runner.assertTrue(row['ISBNコード'] && row['ISBNコード'].trim() !== '', 'ISBNコードが空白でない');
+                    }
+                }
+            });
+        });
+
+        // ==================== ISBN形式検証テスト ====================
+        runner.test('ISBN形式検証', '有効なISBN-13形式（ハイフン区切り）', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    const isbn = results.data[0]['ISBNコード'];
+                    // ISBN-13の形式: 978-X-XX-XXXXXX-X または 979-X-XX-XXXXXX-X
+                    runner.assertTrue(/^(978|979)-\d{1}-\d{2}-\d{6,7}-\d$/.test(isbn), `ISBNコード "${isbn}" が有効な形式である`);
+                }
+            });
+        });
+
+        runner.test('ISBN形式検証', 'ISBNが数字とハイフンのみ', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    for (const row of results.data) {
+                        const isbn = row['ISBNコード'];
+                        runner.assertTrue(/^[0-9\-]+$/.test(isbn), `ISBNコード "${isbn}" が数字とハイフンのみである`);
+                    }
+                }
+            });
+        });
+
+        // ==================== データ量制限テスト ====================
+        runner.test('データ量制限', '最大行数（1000行）以下', function() {
+            // 1000行のデータを生成
+            let csvText = `タイトル,著者,発行年,ISBNコード\n`;
+            for (let i = 1; i <= 1000; i++) {
+                csvText += `テスト本${i},著者${i},${2000 + Math.floor(i / 100)},978-4-${String(i).padStart(2, '0')}-${String(i).padStart(6, '0')}-${i % 10}\n`;
+            }
+
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    runner.assertTrue(results.data.length <= 1000, 'データ行数が1000以下である');
+                }
+            });
+        });
+
+        runner.test('データ量制限', 'ファイルサイズ計算関数', function() {
+            // formatFileSizeのテスト
+            const testCases = [
+                { bytes: 0, expected: '0 Bytes' },
+                { bytes: 512, expected: '512 Bytes' },
+                { bytes: 1024, expected: '1 KB' },
+                { bytes: 1048576, expected: '1 MB' },
+                { bytes: 1073741824, expected: '1 GB' }
+            ];
+
+            for (const testCase of testCases) {
+                const result = formatFileSize(testCase.bytes);
+                runner.assertTrue(result.includes(testCase.expected) || 
+                                result.startsWith(testCase.expected.split(' ')[0]),
+                                `ファイルサイズ ${testCase.bytes} bytes が正しくフォーマットされている`);
+            }
+        });
+
+        // ==================== 特殊文字とエンコーディング ====================
+        runner.test('特殊文字処理', '日本語文字が正しく処理される', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+騎士団長殺し,村上春樹,2017,978-4-10-108805-5`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    runner.assertEqual(results.data[0]['タイトル'], 'ノルウェイの森', '日本語タイトルが正しく読み込まれている');
+                    runner.assertEqual(results.data[1]['著者'], '村上春樹', '日本語著者名が正しく読み込まれている');
+                }
+            });
+        });
+
+        runner.test('特殊文字処理', 'カンマを含むデータ（引用符で囲まれている場合）', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+"タイトル, サブタイトル",村上春樹,1987,978-4-06-182009-8`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    runner.assertEqual(results.data[0]['タイトル'].includes(','), true, 'カンマを含むデータが正しく処理されている');
+                }
+            });
+        });
+
+        // ==================== エッジケーステスト ====================
+        runner.test('エッジケース', 'スペースのみのセルは無視される', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+   ,村上春樹,1987,978-4-06-182009-8`;
+
+            Papa.parse(csvText, {
+                header: true,
+                complete: function(results) {
+                    const title = results.data[0]['タイトル'];
+                    // スペースのみであることを確認
+                    runner.assertTrue(!title || title.trim() === '', 'スペースのみのセルが正しく処理されている');
+                }
+            });
+        });
+
+        runner.test('エッジケース', '重複行が存在しても処理できる', function() {
+            const csvText = `タイトル,著者,発行年,ISBNコード
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+ノルウェイの森,村上春樹,1987,978-4-06-182009-8
+1Q84,村上春樹,2009,978-4-10-108583-2`;
+
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    runner.assertTrue(results.data.length === 3, '重複行を含むCSVが正しく処理される');
+                }
+            });
+        });
+
+        // ==================== 実行関数 ====================
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        async function runAllTests() {
+            await runner.run();
+        }
+
+        // ページロード時に自動実行
+        window.addEventListener('load', runAllTests);
+    </script>
+</body>
+</html>

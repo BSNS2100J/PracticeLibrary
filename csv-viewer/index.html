@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>システム開発事業部：図書情報</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Papa Parse CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 システム開発事業部：図書情報</h1>
+            <p>図書データをCSVファイルから表示します</p>
+        </header>
+
+        <div class="upload-section">
+            <label for="csv-file" class="file-label">
+                <span>📁 CSVファイルを選択</span>
+                <input type="file" id="csv-file" accept=".csv" />
+            </label>
+            <div id="file-info" class="file-info"></div>
+        </div>
+
+        <div class="controls">
+            <div class="search-section" style="display: none;" id="search-section">
+                <input type="text" id="search-input" placeholder="🔍 検索キーワード..." />
+                <span id="search-results" class="search-results"></span>
+            </div>
+            <button id="clear-btn" class="btn-clear" style="display: none;">
+                🗑️ クリア
+            </button>
+        </div>
+
+        <div id="table-container" class="table-container">
+            <div class="empty-state">
+                <p>👆 CSVファイルを選択してください</p>
+            </div>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <span id="row-count"></span>
+            <span id="col-count"></span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
