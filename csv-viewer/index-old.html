@@ -14,6 +14,11 @@
             <p>図書情報の一覧・検索・削除</p>
         </header>
 
+        <nav class="page-nav">
+            <a href="index.html" class="nav-link active">📋 一覧</a>
+            <a href="register.html" class="nav-link">➕ 新規登録</a>
+        </nav>
+
         <div class="upload-section">
             <label for="csv-file" class="file-label">
                 <span>📁 CSVファイルから読み込む</span>
@@ -28,12 +33,11 @@
                 <span id="search-results" class="search-results"></span>
             </div>
             <div class="action-buttons">
-                <a href="register.html" class="btn-add">➕ 新規登録</a>
-                <button id="export-btn" class="btn-export" style="display: none;">
-                    💾 CSVエクスポート
-                </button>
                 <button id="delete-btn" class="btn-delete" style="display: none;" disabled>
                     🗑️ 選択した図書を削除
+                </button>
+                <button id="export-btn" class="btn-export" style="display: none;">
+                    💾 CSVエクスポート
                 </button>
                 <button id="clear-btn" class="btn-clear" style="display: none;">
                     🗑️ 全データクリア

@@ -13,7 +13,7 @@ const addBtn = document.getElementById('add-btn');
 const exportBtn = document.getElementById('export-btn');
 const addFormContainer = document.getElementById('add-form-container');
 const addBookForm = document.getElementById('add-book-form');
-const cancelAddBtn = document.getElementById('cancel-add-btn');
+const clearFormBtn = document.getElementById('clear-form-btn');
 
 // グローバル変数：現在のデータ
 let currentData = [];
@@ -28,8 +28,8 @@ clearBtn.addEventListener('click', clearTable);
 // 検索入力時のイベントリスナー
 searchInput.addEventListener('input', filterTable);
 
-// 新規登録ボタンのイベントリスナー
-addBtn.addEventListener('click', showAddForm);
+// 新規登録ボタンのイベントリスナー（トグル式）
+addBtn.addEventListener('click', toggleAddForm);
 
 // エクスポートボタンのイベントリスナー
 exportBtn.addEventListener('click', exportToCSV);
@@ -37,8 +37,8 @@ exportBtn.addEventListener('click', exportToCSV);
 // フォーム送信のイベントリスナー
 addBookForm.addEventListener('submit', handleAddBook);
 
-// キャンセルボタンのイベントリスナー
-cancelAddBtn.addEventListener('click', hideAddForm);
+// クリアボタンのイベントリスナー
+clearFormBtn.addEventListener('click', clearAddForm);
 
 /**
  * ファイル選択時の処理
@@ -183,6 +183,13 @@ function showStats(rows, cols) {
 }
 
 /**
+ * 統計情報を更新
+ */
+function updateStats(data) {
+    showStats(data.length, currentHeaders.length);
+}
+
+/**
  * テーブルをフィルタリング（検索）
  */
 function filterTable(event) {
@@ -229,11 +236,15 @@ function clearTable() {
 }
 
 /**
- * 新規登録フォームを表示
+ * 新規登録フォームを表示/非表示（トグル）
  */
-function showAddForm() {
-    addFormContainer.style.display = 'block';
-    document.getElementById('input-title').focus();
+function toggleAddForm() {
+    if (addFormContainer.style.display === 'none' || addFormContainer.style.display === '') {
+        addFormContainer.style.display = 'block';
+        document.getElementById('input-title').focus();
+    } else {
+        addFormContainer.style.display = 'none';
+    }
 }
 
 /**
@@ -245,23 +256,43 @@ function hideAddForm() {
 }
 
 /**
+ * フォーム入力をクリア
+ */
+function clearAddForm() {
+    addBookForm.reset();
+    document.getElementById('input-title').focus();
+}
+
+/**
  * 図書情報を追加
  */
 function handleAddBook(event) {
     event.preventDefault();
     
-    const newBook = {};
-    newBook[currentHeaders[0]] = document.getElementById('input-title').value;
-    newBook[currentHeaders[1]] = document.getElementById('input-author').value;
-    newBook[currentHeaders[2]] = document.getElementById('input-year').value;
-    newBook[currentHeaders[3]] = document.getElementById('input-isbn').value;
+    const title = document.getElementById('input-title').value;
+    const author = document.getElementById('input-author').value;
+    const year = document.getElementById('input-year').value;
+    const isbn = document.getElementById('input-isbn').value;
     
-    currentData.push(newBook);
-    displayTable(currentData);
-    updateStats(currentData);
-    hideAddForm();
+    // 確認メッセージを表示
+    const confirmMessage = `以下の図書情報を登録してもよろしいですか？\n\nタイトル: ${title}\n著者: ${author}\n発行年: ${year}\nISBNコード: ${isbn}`;
     
-    alert('✅ 図書情報を追加しました！');
+    if (confirm(confirmMessage)) {
+        // OKの場合：登録処理を実行
+        const newBook = {};
+        newBook[currentHeaders[0]] = title;
+        newBook[currentHeaders[1]] = author;
+        newBook[currentHeaders[2]] = year;
+        newBook[currentHeaders[3]] = isbn;
+        
+        currentData.push(newBook);
+        displayTable(currentData);
+        updateStats(currentData);
+        hideAddForm();  // フォームをクリア
+        
+        alert('✅ 登録完了\n図書情報を登録しました。');
+    }
+    // キャンセルの場合：何もせずフォームはそのまま
 }
 
 /**
@@ -272,7 +303,7 @@ function deleteRow(index) {
         currentData.splice(index, 1);
         displayTable(currentData);
         updateStats(currentData);
-        alert('✅ 図書情報を削除しました！');
+        alert('✅ 削除完了\n図書情報を削除しました。');
     }
 }
 
@@ -310,15 +341,24 @@ function saveRow(index) {
     const row = document.querySelector(`tr[data-index="${index}"]`);
     const inputs = row.querySelectorAll('.edit-input');
     
-    // データを更新
-    const updatedData = {};
-    inputs.forEach((input, i) => {
-        updatedData[currentHeaders[i]] = input.value;
-    });
+    // 入力値を取得
+    const values = Array.from(inputs).map(input => input.value);
     
-    currentData[index] = updatedData;
-    displayTable(currentData);
-    alert('✅ 図書情報を更新しました！');
+    // 確認メッセージを表示
+    const confirmMessage = `以下の内容で図書情報を更新してもよろしいですか？\n\n${currentHeaders.map((header, i) => `${header}: ${values[i]}`).join('\n')}`;
+    
+    if (confirm(confirmMessage)) {
+        // OKの場合：更新処理を実行
+        const updatedData = {};
+        inputs.forEach((input, i) => {
+            updatedData[currentHeaders[i]] = input.value;
+        });
+        
+        currentData[index] = updatedData;
+        displayTable(currentData);
+        alert('✅ 図書情報を更新しました！');
+    }
+    // キャンセルの場合：何もせず編集状態のまま
 }
 
 /**

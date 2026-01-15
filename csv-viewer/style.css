@@ -37,6 +37,39 @@ header p {
     font-size: 1.1rem;
 }
 
+/* ページナビゲーション */
+.page-nav {
+    display: flex;
+    gap: 0;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.nav-link {
+    flex: 1;
+    padding: 15px 20px;
+    text-align: center;
+    text-decoration: none;
+    color: #495057;
+    font-weight: 600;
+    transition: background 0.2s;
+    border-right: 1px solid #e9ecef;
+}
+
+.nav-link:last-child {
+    border-right: none;
+}
+
+.nav-link:hover {
+    background: #e9ecef;
+}
+
+.nav-link.active {
+    background: white;
+    color: #667eea;
+    border-bottom: 3px solid #667eea;
+}
+
 .upload-section {
     padding: 30px;
     text-align: center;
@@ -226,6 +259,8 @@ tbody td {
     cursor: pointer;
     font-size: 1rem;
     transition: background 0.2s;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .btn-add:hover {
@@ -327,6 +362,75 @@ tbody td {
 
 .btn-cancel:hover {
     background: #5a6268;
+}
+
+/* フォームコンテナ */
+.form-container {
+    padding: 40px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-container h2, .form-container h3 {
+    color: #495057;
+    margin-bottom: 30px;
+}
+
+.required {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.error-message {
+    display: block;
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    min-height: 20px;
+}
+
+.btn-back {
+    display: inline-block;
+    padding: 12px 25px;
+    background: #6c757d;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.btn-back:hover {
+    background: #5a6268;
+}
+
+/* 詳細表示 */
+.detail-view {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.detail-row {
+    display: flex;
+    padding: 15px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #495057;
+    width: 150px;
+    flex-shrink: 0;
+}
+
+.detail-value {
+    color: #212529;
+    flex: 1;
 }
 
 /* テーブルアクションボタン */
