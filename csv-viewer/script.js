@@ -9,6 +9,15 @@ const colCount = document.getElementById('col-count');
 const searchInput = document.getElementById('search-input');
 const searchSection = document.getElementById('search-section');
 const searchResults = document.getElementById('search-results');
+const addBtn = document.getElementById('add-btn');
+const exportBtn = document.getElementById('export-btn');
+const addFormContainer = document.getElementById('add-form-container');
+const addBookForm = document.getElementById('add-book-form');
+const cancelAddBtn = document.getElementById('cancel-add-btn');
+
+// グローバル変数：現在のデータ
+let currentData = [];
+let currentHeaders = [];
 
 // ファイル選択時のイベントリスナー
 fileInput.addEventListener('change', handleFileSelect);
@@ -18,6 +27,18 @@ clearBtn.addEventListener('click', clearTable);
 
 // 検索入力時のイベントリスナー
 searchInput.addEventListener('input', filterTable);
+
+// 新規登録ボタンのイベントリスナー
+addBtn.addEventListener('click', showAddForm);
+
+// エクスポートボタンのイベントリスナー
+exportBtn.addEventListener('click', exportToCSV);
+
+// フォーム送信のイベントリスナー
+addBookForm.addEventListener('submit', handleAddBook);
+
+// キャンセルボタンのイベントリスナー
+cancelAddBtn.addEventListener('click', hideAddForm);
 
 /**
  * ファイル選択時の処理
@@ -56,8 +77,10 @@ function parseAndDisplayCSV(csvText) {
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-            displayTable(results.data);
-            updateStats(results.data);
+            currentData = results.data;
+            currentHeaders = results.data.length > 0 ? Object.keys(results.data[0]) : [];
+            displayTable(currentData);
+            updateStats(currentData);
         },
         error: function(error) {
             alert('CSVの解析に失敗しました: ' + error.message);
@@ -89,12 +112,19 @@ function displayTable(data) {
         th.textContent = cell;
         headerRow.appendChild(th);
     });
+    
+    // アクション列のヘッダーを追加
+    const actionHeader = document.createElement('th');
+    actionHeader.textContent = '操作';
+    headerRow.appendChild(actionHeader);
+    
     thead.appendChild(headerRow);
 
     // データ行を作成
     const tbody = document.createElement('tbody');
     data.forEach((row, index) => {
         const tr = document.createElement('tr');
+        tr.dataset.index = index;
         
         // 行ナンバーセルを追加
         const rowNumberCell = document.createElement('td');
@@ -105,8 +135,19 @@ function displayTable(data) {
         Object.values(row).forEach(cell => {
             const td = document.createElement('td');
             td.textContent = cell;
+            td.classList.add('data-cell');
             tr.appendChild(td);
         });
+        
+        // アクションセルを追加
+        const actionCell = document.createElement('td');
+        actionCell.classList.add('action-cell');
+        actionCell.innerHTML = `
+            <button class="btn-edit" onclick="editRow(${index})">✏️ 編集</button>
+            <button class="btn-delete" onclick="deleteRow(${index})">🗑️ 削除</button>
+        `;
+        tr.appendChild(actionCell);
+        
         tbody.appendChild(tr);
     });
 
@@ -121,9 +162,11 @@ function displayTable(data) {
     // 統計情報を表示
     showStats(data.length, headers.length);
 
-    // クリアボタンと検索セクションを表示
+    // ボタンを表示
     clearBtn.style.display = 'inline-block';
     searchSection.style.display = 'flex';
+    addBtn.style.display = 'inline-block';
+    exportBtn.style.display = 'inline-block';
     
     // 検索入力をリセット
     searchInput.value = '';
@@ -178,6 +221,130 @@ function clearTable() {
     stats.style.display = 'none';
     searchInput.value = '';
     searchResults.textContent = '';
+    addBtn.style.display = 'none';
+    exportBtn.style.display = 'none';
+    addFormContainer.style.display = 'none';
+    currentData = [];
+    currentHeaders = [];
+}
+
+/**
+ * 新規登録フォームを表示
+ */
+function showAddForm() {
+    addFormContainer.style.display = 'block';
+    document.getElementById('input-title').focus();
+}
+
+/**
+ * 新規登録フォームを非表示
+ */
+function hideAddForm() {
+    addFormContainer.style.display = 'none';
+    addBookForm.reset();
+}
+
+/**
+ * 図書情報を追加
+ */
+function handleAddBook(event) {
+    event.preventDefault();
+    
+    const newBook = {};
+    newBook[currentHeaders[0]] = document.getElementById('input-title').value;
+    newBook[currentHeaders[1]] = document.getElementById('input-author').value;
+    newBook[currentHeaders[2]] = document.getElementById('input-year').value;
+    newBook[currentHeaders[3]] = document.getElementById('input-isbn').value;
+    
+    currentData.push(newBook);
+    displayTable(currentData);
+    updateStats(currentData);
+    hideAddForm();
+    
+    alert('✅ 図書情報を追加しました！');
+}
+
+/**
+ * 行を削除
+ */
+function deleteRow(index) {
+    if (confirm('この図書情報を削除してもよろしいですか？')) {
+        currentData.splice(index, 1);
+        displayTable(currentData);
+        updateStats(currentData);
+        alert('✅ 図書情報を削除しました！');
+    }
+}
+
+/**
+ * 行を編集
+ */
+function editRow(index) {
+    const row = document.querySelector(`tr[data-index="${index}"]`);
+    const cells = row.querySelectorAll('.data-cell');
+    const originalValues = [];
+    
+    // セルを入力フィールドに変換
+    cells.forEach((cell, i) => {
+        originalValues.push(cell.textContent);
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'edit-input';
+        input.value = cell.textContent;
+        cell.textContent = '';
+        cell.appendChild(input);
+    });
+    
+    // アクションボタンを変更
+    const actionCell = row.querySelector('.action-cell');
+    actionCell.innerHTML = `
+        <button class="btn-save" onclick="saveRow(${index})">💾 保存</button>
+        <button class="btn-cancel-edit" onclick="cancelEdit(${index}, ${JSON.stringify(originalValues).replace(/"/g, '&quot;')})">✖️ キャンセル</button>
+    `;
+}
+
+/**
+ * 編集を保存
+ */
+function saveRow(index) {
+    const row = document.querySelector(`tr[data-index="${index}"]`);
+    const inputs = row.querySelectorAll('.edit-input');
+    
+    // データを更新
+    const updatedData = {};
+    inputs.forEach((input, i) => {
+        updatedData[currentHeaders[i]] = input.value;
+    });
+    
+    currentData[index] = updatedData;
+    displayTable(currentData);
+    alert('✅ 図書情報を更新しました！');
+}
+
+/**
+ * 編集をキャンセル
+ */
+function cancelEdit(index, originalValues) {
+    displayTable(currentData);
+}
+
+/**
+ * CSVとしてエクスポート
+ */
+function exportToCSV() {
+    const csv = Papa.unparse(currentData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `図書情報_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    alert('✅ CSVファイルをダウンロードしました！');
 }
 
 /**

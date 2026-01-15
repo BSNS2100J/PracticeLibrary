@@ -28,9 +28,46 @@
                 <input type="text" id="search-input" placeholder="🔍 検索キーワード..." />
                 <span id="search-results" class="search-results"></span>
             </div>
-            <button id="clear-btn" class="btn-clear" style="display: none;">
-                🗑️ クリア
-            </button>
+            <div class="action-buttons">
+                <button id="add-btn" class="btn-add" style="display: none;">
+                    ➕ 新規登録
+                </button>
+                <button id="export-btn" class="btn-export" style="display: none;">
+                    💾 CSVエクスポート
+                </button>
+                <button id="clear-btn" class="btn-clear" style="display: none;">
+                    🗑️ クリア
+                </button>
+            </div>
+        </div>
+
+        <!-- 新規登録フォーム -->
+        <div id="add-form-container" class="add-form-container" style="display: none;">
+            <div class="add-form">
+                <h3>📝 新規図書登録</h3>
+                <form id="add-book-form">
+                    <div class="form-group">
+                        <label for="input-title">タイトル</label>
+                        <input type="text" id="input-title" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="input-author">著者</label>
+                        <input type="text" id="input-author" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="input-year">発行年</label>
+                        <input type="text" id="input-year" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="input-isbn">ISBNコード</label>
+                        <input type="text" id="input-isbn" required />
+                    </div>
+                    <div class="form-buttons">
+                        <button type="submit" class="btn-submit">✔️ 登録</button>
+                        <button type="button" id="cancel-add-btn" class="btn-cancel">✖️ キャンセル</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div id="table-container" class="table-container">
