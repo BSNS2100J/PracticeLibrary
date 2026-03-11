@@ -2,47 +2,69 @@
 const fileInput = document.getElementById('csv-file');
 const tableContainer = document.getElementById('table-container');
 const fileInfo = document.getElementById('file-info');
-const clearBtn = document.getElementById('clear-btn');
-const deleteBtn = document.getElementById('delete-btn');
-const exportBtn = document.getElementById('export-btn');
 const stats = document.getElementById('stats');
 const rowCount = document.getElementById('row-count');
 const searchInput = document.getElementById('search-input');
 const searchSection = document.getElementById('search-section');
 const searchResults = document.getElementById('search-results');
 
+// グローバル変数
+let currentBooks = [];
+let currentTimestamp = null;
+let serverAvailable = false;
+
 // イベントリスナー
 fileInput.addEventListener('change', handleFileSelect);
-clearBtn.addEventListener('click', handleClearAll);
-deleteBtn.addEventListener('click', handleDelete);
-exportBtn.addEventListener('click', exportToCSV);
 searchInput.addEventListener('input', filterTable);
 
-// ページ読み込み時にデータを表示
+// ページ読み込み時
 window.addEventListener('DOMContentLoaded', () => {
-    loadAndDisplayBooks();
-    
-    // 登録完了メッセージを表示
-    if (localStorage.getItem('showRegisteredMessage') === 'true') {
-        localStorage.removeItem('showRegisteredMessage');
-        alert('✅ 登録完了\n図書情報を登録しました。');
-    }
-    
-    // 更新完了メッセージを表示
-    if (localStorage.getItem('showUpdatedMessage') === 'true') {
-        localStorage.removeItem('showUpdatedMessage');
-        alert('✅ 更新完了\n図書情報を更新しました。');
-    }
+    loadDataFromCSV();
+    checkServerStatus();
 });
 
 /**
- * 図書データを読み込んで表示
+ * サーバーステータスをチェック
  */
-function loadAndDisplayBooks() {
-    const books = getAllBooks();
-    if (books.length > 0) {
-        displayTable(books);
-        updateStats(books);
+async function checkServerStatus() {
+    try {
+        const response = await fetch('http://localhost:3000/api/books', { timeout: 2000 });
+        if (response.ok) {
+            serverAvailable = true;
+            console.log('✅ サーバー接続成功');
+        }
+    } catch (error) {
+        serverAvailable = false;
+        console.log('⚠️ サーバーに接続できません。読み込みモードで動作します。');
+    }
+}
+
+/**
+ * data.csv をファイルから読み込む（初期表示）
+ */
+async function loadDataFromCSV() {
+    try {
+        const response = await fetch('./data.csv');
+        if (!response.ok) {
+            throw new Error('data.csv が見つかりません');
+        }
+        const csvText = await response.text();
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                currentBooks = results.data;
+                currentTimestamp = new Date().getTime();
+                fileInfo.textContent = '📄 data.csv（ファイルから読み込み）';
+                displayTable(currentBooks);
+                updateStats(currentBooks);
+            },
+            error: function(error) {
+                tableContainer.innerHTML = `<div class="empty-state"><p>❌ data.csv の読み込みに失敗しました。</p></div>`;
+            }
+        });
+    } catch (error) {
+        tableContainer.innerHTML = `<div class="empty-state"><p>❌ データファイルが見つかりません。<br>CSVファイルを読み込んでください。</p></div>`;
     }
 }
 
@@ -80,10 +102,12 @@ function parseAndImportCSV(csvText) {
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-            if (confirm(`${results.data.length}件のデータをインポートしますか？\n既存のデータは上書きされます。`)) {
-                importFromCSV(results.data);
-                loadAndDisplayBooks();
-                alert('✅ CSVデータをインポートしました！');
+            if (confirm(`${results.data.length}件のデータをインポートしますか？`)) {
+                currentBooks = results.data;
+                currentTimestamp = null;
+                displayTable(currentBooks);
+                updateStats(currentBooks);
+                alert('✅ CSVデータを読み込みました！');
             }
         },
         error: function(error) {
@@ -102,12 +126,6 @@ function displayTable(books) {
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     
-    // 選択列
-    const selectHeader = document.createElement('th');
-    selectHeader.textContent = '選択';
-    headerRow.appendChild(selectHeader);
-    
-    // データ列
     ['タイトル', '著者', '発行年', 'ISBNコード', '操作'].forEach(header => {
         const th = document.createElement('th');
         th.textContent = header;
@@ -117,15 +135,8 @@ function displayTable(books) {
 
     // データ行
     const tbody = document.createElement('tbody');
-    books.forEach(book => {
+    books.forEach((book, index) => {
         const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        
-        // ラジオボタン
-        const radioCell = document.createElement('td');
-        const radioId = `radio-${book.id}`;
-        radioCell.innerHTML = `<input type="radio" name="selected-book" id="${radioId}" value="${book.id}" />`;
-        tr.appendChild(radioCell);
         
         // データセル
         ['タイトル', '著者', '発行年', 'ISBNコード'].forEach(key => {
@@ -138,19 +149,11 @@ function displayTable(books) {
         // 操作ボタン
         const actionCell = document.createElement('td');
         actionCell.classList.add('action-cell');
-        actionCell.innerHTML = `<a href="edit.html?id=${book.id}" class="btn-edit">✏️ 編集</a>`;
+        actionCell.innerHTML = `
+            <a href="edit.html?index=${index}" class="btn-edit">✏️ 編集</a>
+            <button class="btn-delete" onclick="deleteBook(${index})">🗑️ 削除</button>
+        `;
         tr.appendChild(actionCell);
-        
-        // 行クリックでラジオボタンを選択
-        tr.addEventListener('click', (e) => {
-            // 編集リンクをクリックした場合は除外
-            if (e.target.tagName === 'A' || e.target.closest('a')) {
-                return;
-            }
-            const radio = document.getElementById(radioId);
-            radio.checked = true;
-            deleteBtn.disabled = false;
-        });
         
         tbody.appendChild(tr);
     });
@@ -161,19 +164,8 @@ function displayTable(books) {
     tableContainer.innerHTML = '';
     tableContainer.appendChild(table);
 
-    // ラジオボタンの変更を監視
-    document.querySelectorAll('input[name="selected-book"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            deleteBtn.disabled = false;
-        });
-    });
-
-    // ボタンを表示
-    clearBtn.style.display = 'inline-block';
-    deleteBtn.style.display = 'inline-block';
-    exportBtn.style.display = 'inline-block';
+    // ボタン・検索を表示
     searchSection.style.display = 'flex';
-    deleteBtn.disabled = true;
 }
 
 /**
@@ -185,38 +177,52 @@ function updateStats(books) {
 }
 
 /**
- * 選択した図書を削除
+ * 図書を削除
  */
-function handleDelete() {
-    const selectedRadio = document.querySelector('input[name="selected-book"]:checked');
-    
-    if (!selectedRadio) {
-        alert('削除する図書を選択してください。');
+async function deleteBook(index) {
+    if (!confirm('この図書を削除してもよろしいですか？')) {
         return;
     }
-    
-    if (confirm('選択した図書情報を削除してもよろしいですか？')) {
-        const bookId = selectedRadio.value;
-        deleteBook(bookId);
-        loadAndDisplayBooks();
-        alert('✅ 削除完了\n図書情報を削除しました。');
+
+    // サーバーで削除を試みる
+    if (serverAvailable) {
+        try {
+            const response = await fetch(`http://localhost:3000/api/books/${index}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ timestamp: currentTimestamp })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert('❌ ' + data.error);
+                if (response.status === 409) {
+                    loadDataFromCSV();
+                }
+                return;
+            }
+
+            alert('✅ 削除完了\n図書情報を削除しました。');
+            loadDataFromCSV();
+        } catch (error) {
+            console.log('サーバーエラー。ローカル削除へ切り替え。');
+            deleteLocalBook(index);
+        }
+    } else {
+        // サーバーなしはローカル削除のみ
+        deleteLocalBook(index);
     }
 }
 
 /**
- * 全データをクリア
+ * ローカルで図書を削除（サーバーなし時）
  */
-function handleClearAll() {
-    if (confirm('全ての図書情報を削除してもよろしいですか？\nこの操作は取り消せません。')) {
-        clearAllBooks();
-        tableContainer.innerHTML = '<div class="empty-state"><p>👆 CSVファイルを読み込むか、<a href="register.html">新規登録</a>してください</p></div>';
-        stats.style.display = 'none';
-        clearBtn.style.display = 'none';
-        deleteBtn.style.display = 'none';
-        exportBtn.style.display = 'none';
-        searchSection.style.display = 'none';
-        alert('✅ 全データを削除しました。');
-    }
+function deleteLocalBook(index) {
+    currentBooks.splice(index, 1);
+    displayTable(currentBooks);
+    updateStats(currentBooks);
+    alert('✅ 削除完了\n図書情報を削除しました。');
 }
 
 /**
@@ -235,33 +241,6 @@ function filterTable(event) {
     });
     
     searchResults.textContent = searchTerm === '' ? '' : `マッチ: ${visibleCount}件`;
-}
-
-/**
- * CSVエクスポート
- */
-function exportToCSV() {
-    const books = getAllBooks();
-    const csvData = books.map(book => ({
-        'タイトル': book['タイトル'],
-        '著者': book['著者'],
-        '発行年': book['発行年'],
-        'ISBNコード': book['ISBNコード']
-    }));
-    
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `図書情報_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    alert('✅ CSVファイルをダウンロードしました！');
 }
 
 /**

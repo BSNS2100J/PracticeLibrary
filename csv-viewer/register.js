@@ -9,11 +9,29 @@ clearBtn.addEventListener('click', clearForm);
 /**
  * フォーム送信処理
  */
-function handleSubmit(event) {
+async function handleSubmit(event) {
     event.preventDefault();
     
     // バリデーション
     if (!validateForm()) {
+        return;
+    }
+    
+    // サーバー接続確認（登録はサーバー必須）
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        
+        const checkResponse = await fetch('/api/books', {
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        
+        if (!checkResponse.ok) {
+            throw new Error('サーバーに接続できません');
+        }
+    } catch (error) {
+        alert('❌ 登録にはサーバー接続が必須です。\nターミナルで npm start を実行してください。');
         return;
     }
     
@@ -29,15 +47,30 @@ function handleSubmit(event) {
     const confirmMessage = `以下の図書情報を登録してもよろしいですか？\n\nタイトル: ${bookData['タイトル']}\n著者: ${bookData['著者']}\n発行年: ${bookData['発行年']}\nISBNコード: ${bookData['ISBNコード']}`;
     
     if (confirm(confirmMessage)) {
-        addBook(bookData);
-        // フラグを設定して一覧ページに遷移
-        localStorage.setItem('showRegisteredMessage', 'true');
-        window.location.href = 'index.html';
+        try {
+            const response = await fetch('/api/books', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bookData)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert('❌ ' + data.error);
+                return;
+            }
+
+            alert('✅ 登録完了\n図書情報を登録しました。');
+            window.location.href = 'index.html';
+        } catch (error) {
+            alert('❌ エラー: ' + error.message);
+        }
     }
 }
 
 /**
- * バリデーション
+ * バリデーション（必須: タイトルのみ）
  */
 function validateForm() {
     let isValid = true;
@@ -45,44 +78,10 @@ function validateForm() {
     // エラーメッセージをクリア
     document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
     
-    // タイトル
+    // タイトル（必須）
     const title = document.getElementById('title').value.trim();
     if (!title) {
         showError('title-error', 'タイトルを入力してください。');
-        isValid = false;
-    }
-    
-    // 著者
-    const author = document.getElementById('author').value.trim();
-    if (!author) {
-        showError('author-error', '著者を入力してください。');
-        isValid = false;
-    }
-    
-    // 発行年
-    const year = document.getElementById('year').value.trim();
-    if (!year) {
-        showError('year-error', '発行年を入力してください。');
-        isValid = false;
-    } else if (!/^\d{4}$/.test(year)) {
-        showError('year-error', '発行年は4桁の数字で入力してください。');
-        isValid = false;
-    } else {
-        const yearNum = parseInt(year);
-        const currentYear = new Date().getFullYear();
-        if (yearNum < 1000 || yearNum > currentYear + 1) {
-            showError('year-error', `発行年は1000〜${currentYear + 1}の範囲で入力してください。`);
-            isValid = false;
-        }
-    }
-    
-    // ISBNコード
-    const isbn = document.getElementById('isbn').value.trim();
-    if (!isbn) {
-        showError('isbn-error', 'ISBNコードを入力してください。');
-        isValid = false;
-    } else if (!/^978-\d-\d{2}-\d{6}-\d$/.test(isbn) && !/^\d{13}$/.test(isbn.replace(/-/g, ''))) {
-        showError('isbn-error', 'ISBNコードの形式が正しくありません。（例: 978-4-06-182009-8）');
         isValid = false;
     }
     

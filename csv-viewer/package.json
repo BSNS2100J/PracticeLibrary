@@ -1,0 +1,17 @@
+{
+  "name": "csv-viewer-server",
+  "version": "1.0.0",
+  "description": "図書管理システム - ファイルロック付きサーバー",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0",
+    "proper-lockfile": "^4.1.2"
+  }
+}

@@ -29,21 +29,12 @@
             </div>
             <div class="action-buttons">
                 <a href="register.html" class="btn-add">➕ 新規登録</a>
-                <button id="export-btn" class="btn-export" style="display: none;">
-                    💾 CSVエクスポート
-                </button>
-                <button id="delete-btn" class="btn-delete" style="display: none;" disabled>
-                    🗑️ 選択した図書を削除
-                </button>
-                <button id="clear-btn" class="btn-clear" style="display: none;">
-                    🗑️ 全データクリア
-                </button>
             </div>
         </div>
 
         <div id="table-container" class="table-container">
             <div class="empty-state">
-                <p>👆 CSVファイルを読み込むか、<a href="register.html">新規登録</a>してください</p>
+                <p>👆 データを読み込み中...</p>
             </div>
         </div>
 
@@ -52,7 +43,6 @@
         </div>
     </div>
 
-    <script src="storage.js"></script>
     <script src="index-page.js"></script>
 </body>
 </html>
